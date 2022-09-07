@@ -33,10 +33,8 @@ storage {
     required_confirmations: u64
     //List of submitted transactions
     transactions_list: StorageVec<Transaction> = StorageVec {},
-    //Has given address confirmed
-    has_confirmed: StorageMap<Address,bool> = StorageMap {},
     //Is a given tx confirmed by a given owner
-    is_tx_confirmed_by: StorageMap<u64,has_confirmed> = StorageMap {},
+    is_tx_confirmed_by: StorageMap<(u64,Address), bool> = StorageMap {},
 }
 
 
