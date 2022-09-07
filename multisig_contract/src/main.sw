@@ -25,8 +25,8 @@ struct Transaction {
 }
 
 storage {
-    //Acts as array of owners, index => address;
-    owners_map: StorageMap<u64,Address> = StorageMap {},
+    //Mutex for constructor
+    initialised: bool = false,
     //Allows checking is address is owner
     is_owner: StorageMap<Address,bool> = StorageMap {},
     //Number of confirmations in order for a transaction to be executed
@@ -35,6 +35,50 @@ storage {
     transactions_list: StorageVec<Transaction> = StorageVec {},
     //Is a given tx confirmed by a given owner
     is_tx_confirmed_by: StorageMap<(u64,Address), bool> = StorageMap {},
+}
+
+impl Multisig for Contract {
+    //Constructor
+     #[storage(read, write)]fn constructor(owners: Vec<Address>, required_confirmations: u64) {
+        //Check that constructor has not been called before
+        if storage.initialised == true {
+            revert(0);
+        }
+        //Check that the number of owners is valid
+        if owners.len() < 1 {
+            revert(0);
+        }
+        //Check that the number of confirmations if valid
+        if required_confirmations < 1 ||  required_confirmations > owners.len() {
+            revert(0);
+        }
+        //Set info for each owner
+        let mut i = 0;
+        while i < owners.len() {
+            //get owner
+            let owner = owners.get(i);
+            match owner {
+                Option::None => {
+                    revert(0)
+                },
+                Option::Some(owner) => {
+                    //Check that owner address is unique
+                    if storage.is_owner.get(owner) {
+                        revert(0)
+                    }
+                    //Set info
+                    storage.is_owner.insert(owner, true);
+                },
+            }
+            i += 1;
+        }
+        //Set number of required confirmations before a transaction can be executed
+        storage.required_confirmations = required_confirmations;
+        //Set initialised to true, preventing constructor from being called again
+        storage.initialised = true;
+    }
+
+    //All other func must first check  storage.initialised == true
 }
 
 
