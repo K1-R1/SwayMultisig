@@ -25,6 +25,8 @@ struct Transaction {
 }
 
 storage {
+    //Base asset balance
+    balance: u64 = 0,
     //Mutex for constructor
     initialised: bool = false,
     //Allows checking is address is owner
@@ -79,6 +81,22 @@ impl Multisig for Contract {
     }
 
     //All other func must first check  storage.initialised == true
+
+    //Receive funds
+    #[storage(read, write)]fn receive_funds() {
+        //Check if multisig has been setup
+        if storage.initialised == false {
+            revert(0);
+        } 
+        if msg_asset_id() == BASE_ASSET_ID {
+            // If we received `BASE_ASSET_ID` then keep track of the balance.
+            // Otherwise, we're receiving other native assets and don't care
+            // about our balance of tokens.
+            storage.balance = storage.balance + msg_amount();
+        }
+    }
+
+    //
 }
 
 
