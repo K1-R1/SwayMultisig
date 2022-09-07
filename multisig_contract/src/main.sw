@@ -8,19 +8,20 @@ use std::{
     context::{call_frames::msg_asset_id, msg_amount},
     contract_id::ContractId,
     identity::Identity,
+    option::Option,
     result::Result,
     revert::revert,
-    storage::{StorageMap, StorageVec}
+    storage::{StorageMap, StorageVec},
     token::transfer_to_output,
     vec::Vec,
 };
 
-use mutlisig_abi::Multisig;
+use multisig_lib::Multisig;
 
 struct Transaction {
     recipient: Address,
     amount: u64,
-    bool: executed,
+    executed: bool,
     confitmations: u64,
 }
 
@@ -32,11 +33,11 @@ storage {
     //Allows checking is address is owner
     is_owner: StorageMap<Address,bool> = StorageMap {},
     //Number of confirmations in order for a transaction to be executed
-    required_confirmations: u64
+    required_confirmations: u64 = 0,
     //List of submitted transactions
     transactions_list: StorageVec<Transaction> = StorageVec {},
-    //Is a given tx confirmed by a given owner
-    is_tx_confirmed_by: StorageMap<(u64,Address), bool> = StorageMap {},
+    //Is a given tx confirmed by a given owner. tx_index, address => bool
+    is_confirmed: StorageMap<(u64,Address), bool> = StorageMap {},
 }
 
 impl Multisig for Contract {
@@ -93,6 +94,37 @@ impl Multisig for Contract {
             // Otherwise, we're receiving other native assets and don't care
             // about our balance of tokens.
             storage.balance = storage.balance + msg_amount();
+        }
+    }
+
+    //Owner can submit a transaction for review
+    #[storage(read, write)]fn submit_tx(recipient: Address, amount: u64) {
+        //Check if multisig has been setup
+        if storage.initialised == false {
+            revert(0);
+        } 
+        //Get msg_sender, check that its an owner
+        let sender: Result<Identity, AuthError> = msg_sender();
+        if let Identity::Address(sender_address) = sender.unwrap() {
+            assert(storage.is_owner.get(sender_address));
+
+            //Get next tx_index
+            let tx_index = storage.transactions_list.len();
+
+            //Set and submit tx
+            let mut tx = Transaction {
+                recipient: recipient,
+                amount: amount,
+                executed: false,
+                confitmations: 1, //Confirmation of the submitter
+            };
+            storage.transactions_list.push(tx);
+
+            //Update confirmation map for sender
+            storage.is_confirmed.insert((tx_index, sender_address), true);
+
+        } else {
+            revert(0);
         }
     }
 
