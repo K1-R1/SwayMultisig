@@ -1,0 +1,8 @@
+[project]
+authors = ["Kyran"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "multisig_contract"
+
+[dependencies]
+multisig_lib = { path = "../multisig_lib" }
