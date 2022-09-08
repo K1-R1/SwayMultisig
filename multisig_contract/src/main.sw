@@ -171,6 +171,49 @@ impl Multisig for Contract {
             revert(0);
         }
     }
+
+    //An owner can revoke their confirmation for a given transaction
+    #[storage(read, write)]fn revoke_confirmation(tx_index: u64) {
+        //Check if multisig has been setup
+        if storage.initialised == false {
+            revert(0);
+        }
+
+        //Get msg_sender, check that its an owner
+        let sender: Result<Identity, AuthError> = msg_sender();
+        if let Identity::Address(sender_address) = sender.unwrap() {
+            assert(storage.is_owner.get(sender_address));
+
+            //Check that tx exists
+            if tx_index >= storage.transactions_list.len() {
+                revert(0);
+            }
+
+            //Get tx
+            let mut tx = storage.transactions_list.get(tx_index).unwrap();
+
+            //Check that tx has not been executed
+            if tx.executed {
+                revert(0);
+            }
+            
+            //Check that this owner has confirmed
+            if !storage.is_confirmed.get((tx_index, sender_address)) {
+                revert(0);
+            }
+
+            //Revoke confirmation
+            tx.confirmations -= 1;
+
+            //Update confirmation map for sender
+            storage.is_confirmed.insert((tx_index, sender_address), false);
+
+
+        } else {
+            revert(0);
+        }
+
+    }
 }
 
 
