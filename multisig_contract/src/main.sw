@@ -214,6 +214,55 @@ impl Multisig for Contract {
         }
 
     }
+
+    //Owner can execute a transaction, if has sufficient confirmations
+    #[storage(read, write)]fn execute_tx(tx_index: u64) {
+        //Check if multisig has been setup
+        if storage.initialised == false {
+            revert(0);
+        }
+
+        //Get msg_sender, check that its an owner
+        let sender: Result<Identity, AuthError> = msg_sender();
+        if let Identity::Address(sender_address) = sender.unwrap() {
+            assert(storage.is_owner.get(sender_address));
+
+            //Check that tx exists
+            if tx_index >= storage.transactions_list.len() {
+                revert(0);
+            }
+
+            //Get tx
+            let mut tx = storage.transactions_list.get(tx_index).unwrap();
+
+            //Check that tx has not been executed
+            if tx.executed {
+                revert(0);
+            }
+            
+            //Check that tx has sufficient confirmations
+            if tx.confirmations < storage.required_confirmations {
+                revert(0);
+            }
+
+            //Check that balance is sufficient
+            if storage.balance < tx.amount {
+                revert(0);
+            }
+
+            //Set tx values
+            tx.executed = true;
+
+            //Update balance
+            storage.balance -= tx.amount;
+
+            //Execute tx
+            transfer_to_output(tx.amount, BASE_ASSET_ID, tx.recipient);
+
+        } else {
+            revert(0);
+        }
+    }
 }
 
 
