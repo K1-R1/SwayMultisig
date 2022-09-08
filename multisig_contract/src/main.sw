@@ -42,7 +42,10 @@ storage {
 
 impl Multisig for Contract {
 
-    //Constructor
+    /*
+    Constructor; sets up the multisig wallet. Can only be called once, and must be called before 
+    any other function can be called.
+    */
      #[storage(read, write)]fn constructor(owners: Vec<Address>, required_confirmations: u64) {
         //Check that constructor has not been called before
         if storage.initialised == true {
